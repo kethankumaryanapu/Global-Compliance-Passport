@@ -1,36 +1,95 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Global Compliance Passport
 
-## Getting Started
+Global Compliance Passport (GCP) is a digital identity platform built for startups and businesses. The platform allows businesses to upload compliance certificates (like GST, PAN, Certificate of Incorporation) once, extract structured fields using AI OCR, verify them through a Trusted Authority queue (mock admin dashboard), generate a reusable Compliance Passport, and share verification consent credentials securely with institutions (such as partner banks, VC funds, and gateways) on access timers.
 
-First, run the development server:
+---
 
+## 🛠️ Tech Stack
+
+- **Framework:** Next.js (App Router, dynamic API routes)
+- **Language:** TypeScript & ES modules
+- **Database ORM:** Prisma Client
+- **Local Database:** SQLite (self-contained, config-free fallback)
+- **Production Database:** PostgreSQL (supported via standard toggling)
+- **Styling:** Tailwind CSS v4, Lucide Icons, glassmorphic filters, and linear animations
+- **Notification alerts:** Sonner Toasts
+- **Session Auth:** JWT Sessions inside HTTP-only cookies
+
+---
+
+## 🚀 Getting Started
+
+### 1. Installation
+
+Install all required NPM packages:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Database Synchronization & Generate Client
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Map the Prisma schema to create the local SQLite database file `dev.db` and generate the matching type-safe client models:
+```bash
+npx prisma generate
+npx prisma db push
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 3. Seed Mock Rules & Default Admin User
 
-## Learn More
+Pre-populate the database with the default country compliance rules (India, USA, Germany, Singapore, UAE) and set up the default Administrator account:
+```bash
+node prisma/seed.js
+```
 
-To learn more about Next.js, take a look at the following resources:
+### 4. Boot Local Development Server
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Run the development server:
+```bash
+npm run dev
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## ⚡ Toggle Database: SQLite to PostgreSQL
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+By default, GCP is configured to use **SQLite** to allow immediate execution without local database server settings. To toggle back to **PostgreSQL** (production standard):
+
+1. Open [prisma/schema.prisma](file:///c:/Projects/globalcompilancepassport/prisma/schema.prisma).
+2. Change the `datasource db` block:
+   ```prisma
+   datasource db {
+     provider = "postgresql"
+     url      = env("DATABASE_URL")
+   }
+   ```
+3. Add your database connection string in a `.env` file in the root folder:
+   ```env
+   DATABASE_URL="postgresql://username:password@localhost:5432/compliance_passport?schema=public"
+   ```
+4. Re-run migrations and seeding:
+   ```bash
+   npx prisma generate
+   npx prisma db push
+   node prisma/seed.js
+   ```
+
+---
+
+## 🔐 Credentials for Testing Workflows
+
+Use these default credentials to test the platform roles:
+
+### 1. Admin Role
+- **Login Email:** `admin@123`
+- **Login Password:** `admin123`
+- **Actions:** Inspect document details, view parsed AI findings, approve or reject credentials, and check logs.
+
+### 2. Startup Role (Register a new account)
+- **Signup Page:** Select **Startup**, enter your company name, and registration number (CIN).
+- **Actions:** Securely upload files (GST, PAN, incorporation filings), watch AI OCR parse details, inspect your Compliance Passport score, request RAG compliance advisor guidelines (e.g., Germany expansion), and approve/reject consent shares.
+
+### 3. Institution Role (Register or share with email)
+- **Signup Page:** Select **Institution**, and specify your banking or VC details.
+- **Actions:** Search registered startups, request access to specific documents, and view decrypted credentials once consent is granted by the startup.

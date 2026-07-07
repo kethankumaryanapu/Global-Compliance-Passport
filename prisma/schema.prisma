@@ -1,0 +1,164 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           String      @id @default(uuid())
+  email        String      @unique
+  passwordHash String
+  name         String
+  role         String      // "STARTUP", "INSTITUTION", "ADMIN"
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  
+  // Relations
+  company      Company?
+  institution  Institution?
+  auditLogs    AuditLog[]
+  notifications Notification[]
+}
+
+model Company {
+  id              String             @id @default(uuid())
+  name            String
+  regNumber       String             @unique
+  complianceScore Int                @default(0)
+  logo            String?
+  address         String?
+  industry        String?
+  country         String?
+  userId          String             @unique
+  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  // Relations
+  documents       Document[]
+  passport        CompliancePassport?
+  requests        Request[]
+  auditLogs       AuditLog[]
+}
+
+model Document {
+  id             String         @id @default(uuid())
+  name           String
+  type           String         // "GST", "PAN", "INCORPORATION", "FSSAI", "TAX_CERTIFICATE", "BUSINESS_LICENSE", "FINANCIALS", "KYC", "BANK_PROOF", "PASSPORT", "OTHER"
+  url            String
+  status         String         // "UPLOADED", "PROCESSING", "VERIFIED", "REJECTED", "EXPIRED"
+  version        Int            @default(1)
+  ocrData        String         // JSON String of extracted fields
+  expiryDate     DateTime?
+  comments       String?
+  companyId      String
+  company        Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  
+  verifications  Verification[]
+  aiExtraction   AIExtraction?
+}
+
+model AIExtraction {
+  id                String   @id @default(uuid())
+  documentId        String   @unique
+  document          Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  documentType      String
+  summary           String
+  confidence        Int
+  extractedFields   String   // JSON string storing parsed fields
+  missingFields     String   // JSON string storing missing required fields array
+  duplicateDetected Boolean  @default(false)
+  processingTime    Int      // in ms
+  createdAt         DateTime @default(now())
+}
+
+model Verification {
+  id          String    @id @default(uuid())
+  documentId  String
+  document    Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  status      String    // "PENDING", "VERIFIED", "REJECTED", "NEEDS_RESUBMISSION"
+  adminId     String
+  comments    String?
+  reviewedAt  DateTime  @default(now())
+}
+
+model CompliancePassport {
+  id               String   @id @default(uuid())
+  passportId       String   @unique // GCP-XXXX-XXXX
+  companyId        String   @unique
+  company          Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  complianceScore  Int
+  status           String   // "TRUSTED", "UNTRUSTED"
+  qrCode           String   // SVG path data or text representation
+  digitalSignature String
+  generatedAt      DateTime @default(now())
+  expiresAt        DateTime
+}
+
+model Institution {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  rating      Float    @default(5.0)
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  requests    Request[]
+}
+
+model Request {
+  id                    String      @id @default(uuid())
+  institutionId         String
+  institution           Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  companyId             String
+  company               Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  documentTypes         String      // JSON string array of requested document types
+  status                String      // "PENDING", "APPROVED", "REJECTED", "PARTIAL", "SUBMITTED", "UNDER_REVIEW", "ADDITIONAL_DOCUMENTS_REQUESTED", "COMPLETED"
+  sharedDocuments       String      // JSON string array of document IDs shared
+  requestedAt           DateTime    @default(now())
+  respondedAt           DateTime?
+  accessExpiry          DateTime?
+  
+  purpose               String?
+  additionalNotes       String?
+  sharePassport         Boolean     @default(true)
+  additionalDocsRequest String?
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  companyId String?
+  company   Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  action    String   // "UPLOAD", "VERIFY", "SHARE", "REVOKE", "APPROVE", "REJECT"
+  details   String
+  ipAddress String?
+  createdAt DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  type      String   // "VERIFIED", "REQUEST", "EXPIRY", "SHARED", "COMMENT"
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model CountryComplianceRules {
+  id        String   @id @default(uuid())
+  country   String   @unique // "India", "USA", "Germany", "Singapore", "UAE"
+  rules     String   // JSON string containing list of required docs, validation tips, and regulatory details
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
