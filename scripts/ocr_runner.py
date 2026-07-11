@@ -3,6 +3,8 @@ import os
 import json
 import re
 
+
+
 def main():
     if len(sys.argv) < 2:
         print(json.dumps({"error": "No file path provided"}))
